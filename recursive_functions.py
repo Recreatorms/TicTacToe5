@@ -5,6 +5,7 @@ from functools import cache
 import constants
 
 
+@cache
 def check_win(
     board: Tuple[Tuple[int, ...], ...],
     player: constants.PLAYER_X | constants.PLAYER_O | constants.EMPTY,
@@ -61,6 +62,7 @@ def check_horizontal(
     return check_horizontal(board, player, board_size, win_condition, 0, col + 1, consecutive_count)
 
 
+@cache
 def check_vertical(
     board: Tuple[Tuple[int, ...], ...],
     player: constants.PLAYER_X | constants.PLAYER_O | constants.EMPTY,

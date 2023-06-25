@@ -8,37 +8,12 @@ import graphics
 import constants
 import utils
 
-from minimax_iter import game_over, minimax
+# from minimax_iter import game_over, get_best_move_iter
+from minimax_recurs import game_over, get_best_move_recurs
+
 import python_functions as py_f
 
 # import recursive_functions as recursive_f
-
-
-# Функция для выбора оптимального хода для ИИ
-@cache
-def get_best_move(board: Tuple[Tuple[int, ...], ...]):
-    best_eval = float("-inf")
-    best_move = None
-
-    available_moves = py_f.get_available_moves(board)
-
-    print("AI calculating best move...")
-    for move in available_moves:
-        row, col = move
-        alpha = float("-inf")
-        beta = float("inf")
-        print("Checking move", move)
-        new_board = copy.deepcopy(board)
-        new_board = py_f.transform_board(new_board, row, col, constants.PLAYER_O)
-        eval = minimax(new_board, constants.MAX_DEPTH, constants.PLAYER_X, alpha, beta)
-        print("eval", eval)
-        # new_board = py_f.transform_board(new_board, row, col, constants.EMPTY)
-        if eval > best_eval:
-            best_eval = eval
-            best_move = move
-
-    print("AI best move", best_move, "eval", best_eval)
-    return tuple(best_move)
 
 
 @cache
@@ -74,20 +49,34 @@ def handle_event(event, board: Tuple[Tuple[int, ...], ...]):
 
 # Ход игрока
 @cache
-def player_move(board: Tuple[Tuple[int, ...], ...]):
+def player_move_recursive(board: Tuple[Tuple[int, ...], ...]):
     pygame.event.clear()
     event = pygame.event.wait()
     newBoard = board
     if event.type == pygame.K_ESCAPE:
-        # print("player quitted")
-        pass
+        return None
     if event.type == pygame.MOUSEBUTTONDOWN:
         newBoard = handle_event(event, board)
     else:
         # print("waiting for player actions")
         pass
     if newBoard == board:
-        newBoard = player_move(board)
+        newBoard = player_move_recursive(board)
+    return newBoard
+
+
+def player_move_iterative(board: Tuple[Tuple[int, ...], ...]):
+    newBoard = copy.deepcopy(board)
+    while newBoard == board:
+        pygame.event.clear()
+        event = pygame.event.wait()
+        if event.type == pygame.K_ESCAPE:
+            return None
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            newBoard = handle_event(event, board)
+        else:
+            # print("waiting for player actions")
+            pass
     return newBoard
 
 
@@ -96,9 +85,9 @@ def player_move(board: Tuple[Tuple[int, ...], ...]):
 def ai_move(board: Tuple[Tuple[int, ...], ...]):
     # Переключение на другого игрока
     tuple_board = tuple(map(tuple, board))  # Преобразование списка списков в кортеж
-    best_move = get_best_move(tuple_board)
-    # execution_time = timeit(lambda: get_best_move(tuple_board), globals=globals(), number=1)
-    # print("AI: searching for bestmove took:", execution_time)
+    # best_move = get_best_move_iter(tuple_board)
+    best_move = get_best_move_recurs(tuple_board)
+    
     newBoard = make_move(tuple_board, best_move, constants.PLAYER_O)
     return newBoard
 
@@ -107,7 +96,9 @@ def ai_move(board: Tuple[Tuple[int, ...], ...]):
 @cache
 def game_loop_recursive(board: Tuple[Tuple[int, ...], ...]):
     print("player's turn")
-    board = player_move(board)
+    board = player_move_iterative(board)
+    if board == None:
+        return None
     graphics.render_board(board)
 
     running = not game_over(board)
@@ -127,7 +118,7 @@ def game_loop_recursive(board: Tuple[Tuple[int, ...], ...]):
 def main():
     # Инициализация Pygame и OpenGL
     graphics.setup()
-
+    # sys.setrecursionlimit(10000000)
     # Инициализация игрового поля
     board = np.full((constants.BOARD_SIZE, constants.BOARD_SIZE), constants.EMPTY)
     bufBoard = tuple(map(tuple, board))
@@ -135,6 +126,7 @@ def main():
     graphics.render_board(bufBoard)
     # Игровой цикл
     game_loop_recursive(bufBoard)
+    print("Game ended")
     # render game over window, retry button?
     pygame.quit()
 

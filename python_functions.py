@@ -71,7 +71,7 @@ def check_anti_diagonal(
     for i in range(board_size - (win_condition - 1)):
         for j in range(board_size - (win_condition - 1)):
             if all(
-                board[i + k][j + (win_condition - 1) - k] == player for k in range(win_condition)
+                board[i + k][j + ((win_condition - 1) - k)] == player for k in range(win_condition)
             ):
                 return True
     return False
