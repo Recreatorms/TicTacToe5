@@ -13,24 +13,30 @@ import numpy_functions as np_f
 import python_functions as py_f
 
 import constants
+from utils import getOppositePlayer
 
 # Функция для выбора оптимального хода для ИИ
 @cache
-def get_best_move_iter(board: Tuple[Tuple[int, ...], ...]):
+def get_best_move_iter(
+    board: Tuple[Tuple[int, ...], ...], aiPlayer: constants.PLAYER_X | constants.PLAYER_O
+):
     best_eval = float("-inf")
     best_move = None
 
     available_moves = py_f.get_available_moves(board)
 
     print("AI calculating best move...")
+    oppositePlayer = getOppositePlayer(aiPlayer)
     for move in available_moves:
         row, col = move
         alpha = float("-inf")
         beta = float("inf")
         print("Checking move", move)
         new_board = copy.deepcopy(board)
-        new_board = py_f.transform_board(new_board, row, col, constants.PLAYER_O)
-        eval = minimax(new_board, constants.MAX_DEPTH, constants.PLAYER_X, alpha, beta)
+        new_board = py_f.transform_board(new_board, row, col, aiPlayer)
+        eval = minimax(
+            new_board, constants.MAX_DEPTH, oppositePlayer, alpha, beta, aiPlayer, oppositePlayer
+        )
         print("eval", eval)
         # new_board = py_f.transform_board(new_board, row, col, constants.EMPTY)
         if eval > best_eval:
@@ -48,30 +54,31 @@ def minimax(
     maximizing_player: constants.PLAYER_X | constants.PLAYER_O | constants.EMPTY,
     alpha: float,
     beta: float,
+    aiPlayer: constants.PLAYER_X | constants.PLAYER_O,
+    oppositePlayer: constants.PLAYER_X | constants.PLAYER_O,
 ):
     if depth == 0 or game_over(board):
-        return evaluate(board)
+        return evaluate(board, aiPlayer, oppositePlayer)
 
-    if maximizing_player == constants.PLAYER_O:
+    if maximizing_player == aiPlayer:
         best_eval = float("-inf")
     else:
         best_eval = float("inf")
 
     available_moves = py_f.get_available_moves(board)
-
     for move in available_moves:
         row, col = move
 
         # make move
         board = py_f.transform_board(board, row, col, maximizing_player)
 
-        if maximizing_player == constants.PLAYER_O:
-            eval = minimax(board, depth - 1, constants.PLAYER_X, alpha, beta)
+        if maximizing_player == aiPlayer:
+            eval = minimax(board, depth - 1, oppositePlayer, alpha, beta, aiPlayer, oppositePlayer)
             best_eval = max(best_eval, eval)
             alpha = max(alpha, best_eval)
 
         else:
-            eval = minimax(board, depth - 1, constants.PLAYER_O, alpha, beta)
+            eval = minimax(board, depth - 1, aiPlayer, alpha, beta, aiPlayer, oppositePlayer)
             best_eval = min(best_eval, eval)
             beta = min(beta, best_eval)
 
@@ -85,13 +92,16 @@ def minimax(
 
 # Функция оценки текущего состояния игры
 @cache
-def evaluate(board: Tuple[Tuple[int, ...], ...]):
-    # print("Evaluating...")
+def evaluate(
+    board: Tuple[Tuple[int, ...], ...],
+    aiPlayer: constants.PLAYER_X | constants.PLAYER_O,
+    oppositePlayer: constants.PLAYER_X | constants.PLAYER_O,
+):
     board_size = constants.BOARD_SIZE
     win_condition = constants.WIN_CONDITION
-    if py_f.check_win(board, constants.PLAYER_X, board_size, win_condition):
+    if py_f.check_win(board, oppositePlayer, board_size, win_condition):
         return -1
-    elif py_f.check_win(board, constants.PLAYER_O, board_size, win_condition):
+    elif py_f.check_win(board, aiPlayer, board_size, win_condition):
         return 1
     else:
         return 0
@@ -117,3 +127,5 @@ def game_over(board: Tuple[Tuple[int, ...], ...]):
         # print("Draw")
         return True
     return False
+
+

@@ -13,19 +13,27 @@ import numpy_functions as np_f
 import python_functions as py_f
 
 import constants
-
+from utils import getOppositePlayer
 # Функция для выбора оптимального хода для ИИ
 @cache
-def get_best_move_recurs(board: Tuple[Tuple[int, ...], ...]):
+def get_best_move_recurs(board: Tuple[Tuple[int, ...], ...], aiPlayer):
     available_moves = py_f.get_available_moves(board)
     print("AI calculating best move...")
-    best_move, best_eval = evaluate_moves_first(board, available_moves)
+    oppositePlayer = getOppositePlayer(aiPlayer)
+    best_move, best_eval = evaluate_moves_first(board, available_moves, aiPlayer, oppositePlayer)
     print("AI best move", best_move, "eval", best_eval)
     return tuple(best_move)
 
 
 @cache
-def evaluate_moves_first(board, moves, best_eval=float("-inf"), best_move=None):
+def evaluate_moves_first(
+    board,
+    moves,
+    aiPlayer: constants.PLAYER_X | constants.PLAYER_O,
+    oppositePlayer: constants.PLAYER_X | constants.PLAYER_O,
+    best_eval=float("-inf"),
+    best_move=None,
+):
     if not moves:
         return best_move, best_eval
     else:
@@ -36,16 +44,23 @@ def evaluate_moves_first(board, moves, best_eval=float("-inf"), best_move=None):
         new_board = copy.deepcopy(board)
 
         print("Checking move", move)
-        new_board = py_f.transform_board(new_board, row, col, constants.PLAYER_O)
-
-        eval = minimax(new_board, constants.MAX_DEPTH, constants.PLAYER_X, alpha, beta)
+        new_board = py_f.transform_board(new_board, row, col, aiPlayer)
+        eval = minimax(
+            new_board, constants.MAX_DEPTH, oppositePlayer, alpha, beta, aiPlayer, oppositePlayer
+        )
 
         new_board = py_f.transform_board(new_board, row, col, constants.EMPTY)
         print("eval", eval)
         if eval > best_eval:
             best_eval = eval
             best_move = move
-        return evaluate_moves_first(new_board, moves[1:], best_eval, best_move)
+            if best_eval == 1:
+                return best_move, best_eval
+            if best_eval > -1:
+                return best_move, best_eval
+        return evaluate_moves_first(
+            new_board, moves[1:], aiPlayer, oppositePlayer, best_eval, best_move
+        )
 
 
 @cache
@@ -55,23 +70,36 @@ def minimax(
     maximizing_player: constants.PLAYER_X | constants.PLAYER_O | constants.EMPTY,
     alpha: float,
     beta: float,
+    aiPlayer: constants.PLAYER_X | constants.PLAYER_O,
+    oppositePlayer: constants.PLAYER_X | constants.PLAYER_O,
 ):
-    # print(minimax.cache_info())
     if depth == 0 or game_over(board):
-        return evaluate(board)
+        return evaluate(board, aiPlayer, oppositePlayer)
 
-    if maximizing_player == constants.PLAYER_O:
+    if maximizing_player == aiPlayer:
         best_eval = float("-inf")
     else:
         best_eval = float("inf")
 
     available_moves = py_f.get_available_moves(board)
 
-    return evaluate_moves(board, available_moves, depth, maximizing_player, best_eval, alpha, beta)
+    return evaluate_moves(
+        board,
+        available_moves,
+        depth,
+        maximizing_player,
+        best_eval,
+        alpha,
+        beta,
+        aiPlayer,
+        oppositePlayer,
+    )
 
 
 @cache
-def evaluate_moves(board, moves, depth, maximizing_player, best_eval, alpha, beta):
+def evaluate_moves(
+    board, moves, depth, maximizing_player, best_eval, alpha, beta, aiPlayer, oppositePlayer
+):
     if not moves:
         return best_eval
 
@@ -79,10 +107,10 @@ def evaluate_moves(board, moves, depth, maximizing_player, best_eval, alpha, bet
     remaining_moves = moves[1:]
 
     board, eval, new_alpha, new_beta = evaluate_move(
-        board, move, depth, maximizing_player, best_eval, alpha, beta
+        board, move, depth, maximizing_player, best_eval, alpha, beta, aiPlayer, oppositePlayer
     )
 
-    if maximizing_player == constants.PLAYER_O:
+    if maximizing_player == aiPlayer:
         best_eval = max(best_eval, eval)
         alpha = max(new_alpha, best_eval)
         if beta <= alpha:
@@ -93,20 +121,24 @@ def evaluate_moves(board, moves, depth, maximizing_player, best_eval, alpha, bet
         if beta <= alpha:
             return best_eval
 
-    return evaluate_moves(board, remaining_moves, depth, maximizing_player, best_eval, alpha, beta)
+    return evaluate_moves(
+        board, remaining_moves, depth, maximizing_player, best_eval, alpha, beta, aiPlayer, oppositePlayer
+    )
 
 
 @cache
-def evaluate_move(board, move, depth, maximizing_player, best_eval, alpha, beta):
+def evaluate_move(board, move, depth, maximizing_player, best_eval, alpha, beta, aiPlayer, oppositePlayer):
     row, col = move
     # make move
     board = py_f.transform_board(board, row, col, maximizing_player)
-    if maximizing_player == constants.PLAYER_O:
-        eval = minimax(board, depth - 1, constants.PLAYER_X, alpha, beta)
+    if maximizing_player == aiPlayer:
+        eval = minimax(
+            board, depth - 1, getOppositePlayer(aiPlayer), alpha, beta, aiPlayer, oppositePlayer
+        )
         best_eval = max(best_eval, eval)
         alpha = max(alpha, best_eval)
     else:
-        eval = minimax(board, depth - 1, constants.PLAYER_O, alpha, beta)
+        eval = minimax(board, depth - 1, aiPlayer, alpha, beta, aiPlayer, oppositePlayer)
         best_eval = min(best_eval, eval)
         beta = min(beta, best_eval)
     # undo move
@@ -116,13 +148,13 @@ def evaluate_move(board, move, depth, maximizing_player, best_eval, alpha, beta)
 
 # Функция оценки текущего состояния игры
 @cache
-def evaluate(board: Tuple[Tuple[int, ...], ...]):
+def evaluate(board: Tuple[Tuple[int, ...], ...], aiPlayer, oppositePlayer):
     # print("Evaluating...")
     board_size = constants.BOARD_SIZE
     win_condition = constants.WIN_CONDITION
-    if py_f.check_win(board, constants.PLAYER_X, board_size, win_condition):
+    if py_f.check_win(board, oppositePlayer, board_size, win_condition):
         return -1
-    elif py_f.check_win(board, constants.PLAYER_O, board_size, win_condition):
+    elif py_f.check_win(board, aiPlayer, board_size, win_condition):
         return 1
     else:
         return 0
@@ -136,15 +168,14 @@ def game_over(board: Tuple[Tuple[int, ...], ...]):
     # print("Game over?")
 
     if py_f.check_win(board, constants.PLAYER_X, board_size, win_condition):
-
         # print("Player X won")
         return True
     if py_f.check_win(board, constants.PLAYER_O, board_size, win_condition):
-
         # print("Player O won")
         return True
     if np_f.is_board_full(board):
-
         # print("Draw")
         return True
     return False
+
+

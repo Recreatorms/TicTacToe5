@@ -15,6 +15,8 @@ import python_functions as py_f
 
 # import recursive_functions as recursive_f
 
+aiPlayer = constants.PLAYER_X
+
 
 @cache
 def make_move(
@@ -41,7 +43,7 @@ def handle_event(event, board: Tuple[Tuple[int, ...], ...]):
         if newBoard[i][j] == constants.EMPTY:
             move = (i, j)
             print("player clicked at", move)
-            newBoard = make_move(newBoard, move, constants.PLAYER_X)
+            newBoard = make_move(newBoard, move, utils.getOppositePlayer(aiPlayer))
         else:
             print("pos is blocked", (i, j))
     return newBoard
@@ -86,26 +88,37 @@ def ai_move(board: Tuple[Tuple[int, ...], ...]):
     # Переключение на другого игрока
     tuple_board = tuple(map(tuple, board))  # Преобразование списка списков в кортеж
     # best_move = get_best_move_iter(tuple_board)
-    best_move = get_best_move_recurs(tuple_board)
-    
-    newBoard = make_move(tuple_board, best_move, constants.PLAYER_O)
+    best_move = get_best_move_recurs(tuple_board, aiPlayer)
+
+    newBoard = make_move(tuple_board, best_move, aiPlayer)
     return newBoard
 
 
 # Рекурсивный игровой цикл
 @cache
 def game_loop_recursive(board: Tuple[Tuple[int, ...], ...]):
-    print("player's turn")
-    board = player_move_iterative(board)
-    if board == None:
-        return None
+
+    if aiPlayer == constants.PLAYER_O:
+        print("player's turn")
+        board = player_move_iterative(board)
+        if board == None:  # player pressed esc
+            return None
+    else:
+        print("ai's turn")
+        board = ai_move(board)
     graphics.render_board(board)
 
     running = not game_over(board)
     print("Continue?", running)
     if running:
-        print("ai's turn")
-        board = ai_move(board)
+        if aiPlayer == constants.PLAYER_O:
+            print("ai's turn")
+            board = ai_move(board)
+        else:
+            print("player's turn")
+            board = player_move_iterative(board)
+            if board == None:  # player pressed esc
+                return None
         graphics.render_board(board)
         running = not game_over(board)
         print("Continue?", running)

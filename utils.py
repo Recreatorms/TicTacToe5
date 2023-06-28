@@ -18,3 +18,10 @@ def getRelativePos(x, y):
     i = y // constants.CELL_SIZE
     j = x // constants.CELL_SIZE
     return i, j
+
+@cache
+def getOppositePlayer(aiPlayer):
+    if aiPlayer == constants.PLAYER_O:
+        return constants.PLAYER_X
+    else:
+        return constants.PLAYER_O
