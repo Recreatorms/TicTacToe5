@@ -14,6 +14,7 @@ import python_functions as py_f
 
 import constants
 from utils import getOppositePlayer
+
 # Функция для выбора оптимального хода для ИИ
 @cache
 def get_best_move_recurs(board: Tuple[Tuple[int, ...], ...], aiPlayer):
